@@ -106,6 +106,15 @@ def gem_a2_manifest_workflow():
         controller.run_gem_a2_workflow()
 
 
+def gem_ptsc_manifest_workflow():
+    """
+    Entrypoint for GEM PTSC Manifest Workflow
+    """
+    with GenomicJobController(GenomicJob.GEM_PTSC_MANIFEST,
+                              bucket_name=config.GENOMIC_GEM_BUCKET_NAME) as controller:
+        controller.run_gem_a2_workflow()
+
+
 def create_cvl_reconciliation_report():
     """
     Entrypoint for CVL reconciliation workflow
