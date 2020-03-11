@@ -558,6 +558,7 @@ class GenomicManifestTypes(messages.Enum):
     GC_DRC = 3
     DRC_CVL_WGS = 4
     GEM_A1 = 5
+    GEM_PTSC = 6
 
 
 class WorkbenchWorkspaceStatus(messages.Enum):

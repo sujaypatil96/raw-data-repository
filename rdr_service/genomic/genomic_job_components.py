@@ -979,13 +979,22 @@ class ManifestDefinitionProvider:
             columns=self._get_manifest_columns(GenomicManifestTypes.DRC_CVL_WGS),
         )
 
-        # Color Array CVL Manifest
+        # GEM Color A1 Manifest
         self.MANIFEST_DEFINITIONS[GenomicManifestTypes.GEM_A1] = self.ManifestDef(
             job_run_field='gemA1ManifestJobRunId',
             source_data=self._get_source_data_query(GenomicManifestTypes.GEM_A1),
             destination_bucket=f'{self.bucket_name}',
             output_filename=f'{getSetting(GENOMIC_GEM_A1_MANIFEST_SUBFOLDER)}/AoU_GEM_Manifest_{self.job_run_id}.csv',
             columns=self._get_manifest_columns(GenomicManifestTypes.GEM_A1),
+        )
+
+        # GEM PTSC PID Manifest
+        self.MANIFEST_DEFINITIONS[GenomicManifestTypes.GEM_PTSC] = self.ManifestDef(
+            job_run_field='gemPtscSentJobRunId',
+            source_data=self._get_source_data_query(GenomicManifestTypes.GEM_PTSC),
+            destination_bucket=f'{self.bucket_name}',
+            output_filename=f'gem_pids_{self.job_run_id}.csv',
+            columns=self._get_manifest_columns(GenomicManifestTypes.GEM_PTSC),
         )
 
     def _get_source_data_query(self, manifest_type):
@@ -1036,6 +1045,22 @@ class ManifestDefinitionProvider:
                     AND m.reconcile_metrics_sequencing_job_run_id IS NOT NULL
                     AND m.genome_type = "aou_array"
                     AND ps.suspension_status = 1
+                    AND ps.withdrawal_status = 1
+                    # TODO: AND m.consent_for_ror = 1
+            """
+
+        # Color GEM A1 Manifest
+        if manifest_type == GenomicManifestTypes.GEM_PTSC:
+            query_sql = """
+                SELECT ps.participant_id
+                    , m.sample_id
+                FROM participant_summary ps
+                    JOIN genomic_set_member m ON m.participant_id = ps.participant_id
+                WHERE TRUE
+                    AND m.gem_pass = "Y"                    
+                    AND ps.withdrawal_status = 1
+                    AND ps.suspension_status = 1
+                    AND m.gem_ptsc_sent_job_run_id IS NULL
                     # TODO: AND m.consent_for_ror = 1
             """
         return query_sql
@@ -1062,6 +1087,10 @@ class ManifestDefinitionProvider:
                 'biobank_id',
                 'sample_id',
                 "sex_at_birth",
+            )
+        elif manifest_type == GenomicManifestTypes.GEM_PTSC:
+            columns = (
+                'participant_id',
             )
         return columns
 

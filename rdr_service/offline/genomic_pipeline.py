@@ -112,7 +112,7 @@ def gem_ptsc_manifest_workflow():
     """
     with GenomicJobController(GenomicJob.GEM_PTSC_MANIFEST,
                               bucket_name=config.GENOMIC_GEM_BUCKET_NAME) as controller:
-        controller.run_gem_a2_workflow()
+        controller.generate_manifest(GenomicManifestTypes.GEM_PTSC)
 
 
 def create_cvl_reconciliation_report():

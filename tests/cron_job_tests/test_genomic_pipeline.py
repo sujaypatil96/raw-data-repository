@@ -781,6 +781,8 @@ class GenomicPipelineTest(BaseTestCase):
         recon_cvl_job_id=None,
         cvl_manifest_wgs_job_id=None,
         gem_a1_manifest_job_id=None,
+        gem_a2_manifest_job_id=None,
+        gem_pass=None,
     ):
         genomic_set_member = GenomicSetMember()
         genomic_set_member.genomicSetId = genomic_set_id
@@ -801,6 +803,8 @@ class GenomicPipelineTest(BaseTestCase):
         genomic_set_member.reconcileCvlJobRunId = recon_cvl_job_id
         genomic_set_member.cvlManifestWgsJobRunId = cvl_manifest_wgs_job_id
         genomic_set_member.gemA1ManifestJobRunId = gem_a1_manifest_job_id
+        genomic_set_member.gemA2ManifestJobRunId = gem_a2_manifest_job_id
+        genomic_set_member.gemPass = gem_pass
 
         member_dao = GenomicSetMemberDao()
         member_dao.insert(genomic_set_member)
@@ -878,6 +882,8 @@ class GenomicPipelineTest(BaseTestCase):
                 recon_sequencing_job_id=kwargs.get('recon_seq_id'),
                 recon_gc_manifest_job_id=kwargs.get('recon_gc_man_id'),
                 gem_a1_manifest_job_id=kwargs.get('gem_a1_run_id'),
+                gem_a2_manifest_job_id=kwargs.get('gem_a2_run_id'),
+                gem_pass=kwargs.get('gem_pass'),
             )
 
     def _update_site_states(self):
@@ -1495,3 +1501,29 @@ class GenomicPipelineTest(BaseTestCase):
         # Test the job result
         run_obj = self.job_run_dao.get(2)
         self.assertEqual(GenomicSubProcessResult.SUCCESS, run_obj.runResult)
+
+    def test_gem_ptsc_manifest_workflow(self):
+        # Create Dummy job run: id = 1
+        self.job_run_dao.insert(GenomicJobRun(jobId=GenomicJob.GEM_A1_MANIFEST,
+                                              startTime=clock.CLOCK.now(),
+                                              runStatus=GenomicSubProcessStatus.COMPLETED,
+                                              runResult=GenomicSubProcessResult.SUCCESS))
+
+        # Create genomic set members
+        self._create_fake_datasets_for_gc_tests(3, arr_override=True,
+                                                array_participants=range(1, 4),
+                                                gem_a1_run_id=1,
+                                                gem_a2_run_id=1,
+                                                gem_pass="Y")
+        # Run Workflow
+        genomic_pipeline.gem_ptsc_manifest_workflow()  # run_id 2
+
+        # Test gem_pass field
+        members = self.member_dao.get_all()
+        for member in members:
+            self.assertEqual(2, member.gemPtscSentJobRunId)
+
+        # Test Files Processed
+        file_record = self.file_processed_dao.get(1)
+        self.assertEqual(2, file_record.runId)
+        self.assertEqual('AoU_GEM_Manifest_2.csv', file_record.fileName)

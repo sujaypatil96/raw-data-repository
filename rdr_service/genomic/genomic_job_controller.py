@@ -222,6 +222,15 @@ class GenomicJobController:
         except RuntimeError:
             self.job_result = GenomicSubProcessResult.ERROR
 
+    def run_gem_ptsc_workflow(self):
+        """
+        Creates list of PID for PTSC
+        """
+        try:
+            self.job_result = GenomicSubProcessResult.SUCCESS
+        except RuntimeError:
+            self.job_result = GenomicSubProcessResult.ERROR
+
     def _end_run(self):
         """Updates the genomic_job_run table with end result"""
         self.job_run_dao.update_run_record(self.job_run.id, self.job_result, GenomicSubProcessStatus.COMPLETED)
