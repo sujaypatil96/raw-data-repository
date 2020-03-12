@@ -1518,12 +1518,23 @@ class GenomicPipelineTest(BaseTestCase):
         # Run Workflow
         genomic_pipeline.gem_ptsc_manifest_workflow()  # run_id 2
 
-        # Test gem_pass field
+        # Test members' job run field
         members = self.member_dao.get_all()
         for member in members:
             self.assertEqual(2, member.gemPtscSentJobRunId)
 
+        bucket_name = config.getSetting(config.GENOMIC_GEM_BUCKET_NAME)
+        with open_cloud_file(os.path.normpath(f'{bucket_name}/gem_pids_2.csv')) as csv_file:
+            rows = list(csv.DictReader(csv_file))
+            self.assertEqual(1, int(rows[0]['participant_id']))
+            self.assertEqual(2, int(rows[1]['participant_id']))
+            self.assertEqual(3, int(rows[2]['participant_id']))
+
         # Test Files Processed
         file_record = self.file_processed_dao.get(1)
         self.assertEqual(2, file_record.runId)
-        self.assertEqual('AoU_GEM_Manifest_2.csv', file_record.fileName)
+        self.assertEqual('gem_pids_2.csv', file_record.fileName)
+
+        # Test the job result
+        run_obj = self.job_run_dao.get(2)
+        self.assertEqual(GenomicSubProcessResult.SUCCESS, run_obj.runResult)
