@@ -39,6 +39,7 @@ class GenomicSetFileHandlerTest(BaseTestCase):
         config.override_setting(config.GENOMIC_SET_BUCKET_NAME, [_FAKE_BUCKET])
         config.override_setting(config.BIOBANK_SAMPLES_BUCKET_NAME, [_FAKE_BUCKET])
         config.override_setting(config.GENOMIC_BIOBANK_MANIFEST_FOLDER_NAME, [_FAKE_BUCKET_FOLDER])
+        config.override_setting(config.BIOBANK_ID_PREFIX, ["T"])
         self.participant_dao = ParticipantDao()
         self.summary_dao = ParticipantSummaryDao()
 

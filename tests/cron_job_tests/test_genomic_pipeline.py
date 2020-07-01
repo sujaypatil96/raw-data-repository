@@ -93,6 +93,8 @@ class GenomicPipelineTest(BaseTestCase):
         config.override_setting(config.GENOMIC_GEM_BUCKET_NAME, [_FAKE_GEM_BUCKET])
         config.override_setting(config.GENOMIC_AW1F_SUBFOLDER, [_FAKE_FAILURE_FOLDER])
 
+        config.override_setting(config.BIOBANK_ID_PREFIX, ["T"])
+
         self.participant_dao = ParticipantDao()
         self.summary_dao = ParticipantSummaryDao()
         self.race_dao = ParticipantRaceAnswersDao()
