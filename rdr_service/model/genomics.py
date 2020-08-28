@@ -148,17 +148,20 @@ class GenomicSetMember(Base):
                                     Integer, ForeignKey("genomic_job_run.id"),
                                     nullable=True)
     gemPass = Column('gem_pass', String(10), nullable=True)
+
+    gemDateOfImport = Column("gem_date_of_import", DateTime, nullable=True)
+
     gemA3ManifestJobRunId = Column('gem_a3_manifest_job_run_id',
                                    Integer, ForeignKey("genomic_job_run.id"),
                                    nullable=True)
 
-    arrAW3ManifestJobRunID = Column('arr_aw3_manifest_job_run_id',
-                                   Integer, ForeignKey("genomic_job_run.id"),
-                                   nullable=True)
+    aw3ManifestJobRunID = Column('aw3_manifest_job_run_id',
+                                 Integer, ForeignKey("genomic_job_run.id"),
+                                 nullable=True)
 
-    wgsAW3ManifestJobRunID = Column('wgs_aw3_manifest_job_run_id',
-                                   Integer, ForeignKey("genomic_job_run.id"),
-                                   nullable=True)
+    aw4ManifestJobRunID = Column('aw4_manifest_job_run_id',
+                                 Integer, ForeignKey("genomic_job_run.id"),
+                                 nullable=True)
 
     # CVL WGS Fields
     cvlW1ManifestJobRunId = Column('cvl_w1_manifest_job_run_id',

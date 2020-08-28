@@ -4,25 +4,27 @@
 #
 
 import argparse
-import math
-import os
-
 # pylint: disable=superfluous-parens
 # pylint: disable=broad-except
 import logging
+import math
+import os
 import sys
 
 from werkzeug.exceptions import NotFound
 
-from rdr_service.offline.bigquery_sync import batch_rebuild_participants_task
 from rdr_service.cloud_utils.gcp_cloud_tasks import GCPCloudTask
+from rdr_service.dao.bigquery_sync_dao import BigQuerySyncDao
+from rdr_service.dao.bq_participant_summary_dao import rebuild_bq_participant
+from rdr_service.dao.bq_questionnaire_dao import BQPDRQuestionnaireResponseGenerator
+from rdr_service.dao.resource_dao import ResourceDataDao
+from rdr_service.model.bq_questionnaires import BQPDRConsentPII, BQPDRTheBasics, BQPDRLifestyle, BQPDROverallHealth, \
+    BQPDREHRConsentPII, BQPDRDVEHRSharing, BQPDRCOPEMay
+from rdr_service.model.participant import Participant
+from rdr_service.offline.bigquery_sync import batch_rebuild_participants_task
+from rdr_service.resource.generators.participant import rebuild_participant_summary_resource
 from rdr_service.services.system_utils import setup_logging, setup_i18n, print_progress_bar
 from rdr_service.tools.tool_libs import GCPProcessContext, GCPEnvConfigObject
-from rdr_service.dao.bq_participant_summary_dao import rebuild_bq_participant
-from rdr_service.resource.generators.participant import rebuild_participant_summary_resource
-from rdr_service.dao.resource_dao import ResourceDataDao
-from rdr_service.model.participant import Participant
-
 
 _logger = logging.getLogger("rdr_logger")
 
@@ -51,6 +53,30 @@ class ResourceClass(object):
         try:
             rebuild_bq_participant(pid, project_id=self.gcp_env.project)
             rebuild_participant_summary_resource(pid)
+
+            mod_bqgen = BQPDRQuestionnaireResponseGenerator()
+
+            # Generate participant questionnaire module response data
+            modules = (
+                BQPDRConsentPII,
+                BQPDRTheBasics,
+                BQPDRLifestyle,
+                BQPDROverallHealth,
+                BQPDREHRConsentPII,
+                BQPDRDVEHRSharing,
+                BQPDRCOPEMay
+            )
+            for module in modules:
+                mod = module()
+                table, mod_bqrs = mod_bqgen.make_bqrecord(pid, mod.get_schema().get_module_name())
+                if not table:
+                    continue
+
+                w_dao = BigQuerySyncDao()
+                with w_dao.session() as w_session:
+                    for mod_bqr in mod_bqrs:
+                        mod_bqgen.save_bqrecord(mod_bqr.questionnaire_response_id, mod_bqr, bqtable=table,
+                                                w_dao=w_dao, w_session=w_session, project_id=self.gcp_env.project)
         except NotFound:
             return 1
         return 0
@@ -67,6 +93,8 @@ class ResourceClass(object):
 
         total_rows = len(pids)
         batch_total = int(math.ceil(float(total_rows) / float(batch_size)))
+        if self.args.batch:
+            batch_total = math.ceil(total_rows / batch_size)
         _logger.info('Calculated {0} tasks from {1} pids with a batch size of {2}.'.
                      format(batch_total, total_rows, batch_size))
 
@@ -89,13 +117,14 @@ class ResourceClass(object):
                 else:
                     task.execute('rebuild_participants_task', payload=payload, in_seconds=15,
                                         queue='resource-rebuild', project_id=self.gcp_env.project, quiet=True)
+
                 batch_count += 1
                 # reset for next batch
                 batch = list()
                 count = 0
                 if not self.args.debug:
                     print_progress_bar(
-                        batch_count, len(pids), prefix="{0}/{1}:".format(batch_count, batch_total), suffix="complete"
+                        batch_count, batch_total, prefix="{0}/{1}:".format(batch_count, batch_total), suffix="complete"
                     )
 
                 # Collect the garbage after so long to prevent hitting open file limit.
@@ -114,7 +143,7 @@ class ResourceClass(object):
 
             if not self.args.debug:
                 print_progress_bar(
-                    batch_count, len(pids), prefix="{0}/{1}:".format(batch_count, batch_total), suffix="complete"
+                    batch_count, batch_total, prefix="{0}/{1}:".format(batch_count, batch_total), suffix="complete"
                 )
 
         logging.info(f'Submitted {batch_count} tasks.')
@@ -184,7 +213,7 @@ class ResourceClass(object):
             # read pids from file.
             pids = open(os.path.expanduser(self.args.from_file)).readlines()
             # convert pids from a list of strings to a list of integers.
-            pids = [int(i) for i in pids]
+            pids = [int(i) for i in pids if i.strip()]
             _logger.info('  PIDs File             : {0}'.format(clr.fmt(self.args.from_file)))
             _logger.info('  Total PIDs            : {0}'.format(clr.fmt(len(pids))))
         elif self.args.all_pids:
